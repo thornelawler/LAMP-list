@@ -4,6 +4,14 @@ if($_SERVER["HTTPS"] != "on")
     header("Location: https://" . $_SERVER["HTTP_HOST"] . $_SERVER["REQUEST_URI"]);
     exit();
 }
+
+ini_set("display_errors", 1);
+
+include "lib.php";
+
+$db = open_db();
+
+process_form($db);
 ?>
 <!DOCTYPE HTML>
 <html>
@@ -16,8 +24,13 @@ if($_SERVER["HTTPS"] != "on")
 			<h1>A persistent list</h1>
 			<form class="input" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]);?>" method="post">
 				New item: <input type="text" size=40 name="item">
+				Category: <?php pop_cat_select($db); ?>
 				<input id="mylat" type="hidden" name="latitude">
 				<input id="mylong" type="hidden" name="longitude">
+				<input type="submit">
+			</form>
+			<form class="input" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]);?>" method="post">
+				New category: <input type="text" size=20 name="new_cat">
 				<input type="submit">
 			</form>
 			<script>
@@ -51,15 +64,7 @@ if($_SERVER["HTTPS"] != "on")
 			</script>
 			<p><?php
 
-ini_set("display_errors", 1);
-
-include "lib.php";
-
-$db = open_db();
-
-process_form($db);
-
-populate($db);
+pop_list($db);
 
 close_db($db);
 

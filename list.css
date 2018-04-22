@@ -15,12 +15,27 @@ div.attrib {
 	src: url(font/Airstream_ITC_TT.ttf);
 }
 
-h1 {
+h1, div.category {
 	color: #C26356;
-	font-size: 50px;
 	font-family: myHoopsicle;
 	font-weight: normal;
+}
+
+h1 {
+	font-size: 50px;
 	text-align: center;
+}
+
+div.category {
+	font-size: 25px;
+	text-align: left;
+	margin-bottom: 0;
+	display: inline;
+}
+
+form.delcat {
+	text-align: right;
+	display: inline;
 }
 
 p, form, ul, table {

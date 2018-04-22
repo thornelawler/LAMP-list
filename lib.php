@@ -51,11 +51,37 @@ function process_form($database) {
 				$mylong = "76.6413";
 			}
 
-			if (!$database->query("INSERT INTO list (item, date, latitude, longitude) VALUES ('$item', '" . time() . "','$mylat','$mylong')")) {
+			if (isset($_POST["category"])) {
+				if ($_POST["category"]) {
+					$category = (int)$_POST["category"];
+				}
+				else {
+					$category = 1;
+				}
+			}
+			else {
+				$category = 1;
+			}
+
+			if (!$database->query("INSERT INTO list (item, date, catid, latitude, longitude) VALUES ('$item', '" . time() . "','$category','$mylat','$mylong')")) {
 				echo "Insert failed: (" . $database->errno . ") " . $database->error;
 			}
 		}
 		
+		# If there's a new category, validate it and add it.
+		if (isset($_POST["new_cat"])) {
+			# Validate category
+			$new_cat = trim($_POST["new_cat"]);
+			$new_cat = substr($new_cat, 0, 50);
+			$new_cat = stripslashes($new_cat);
+			$new_cat = htmlspecialchars($new_cat);
+			$new_cat = $database->real_escape_string($new_cat);
+			
+			if (!$database->query("INSERT INTO category (name) VALUES ('$new_cat')")) {
+				echo "Insert failed: (" . $database->errno . ") " . $database->error;
+			}
+		}
+	
 		# If there's a delete request, delete it.
 		if (isset($_POST["delete"])) {
 			# Validate delete
@@ -65,13 +91,67 @@ function process_form($database) {
 				echo "Delete failed: (" . $database->errno . ") " . $database->error;
 			}
 		}
+		
+		# If there's a category to delete, take a deep breath and delete it.
+		if (isset($_POST["delcat"])) {
+			# Validate delete
+			$delcat = (int)$_POST["delcat"];
+			
+			# Delete all the list items with this category
+			if (!$database->query("DELETE FROM list WHERE catid = $delcat")) {
+				echo "Delete failed: (" . $database->errno . ") " . $database->error;
+			}
+
+			# Delete the category
+			if (!$database->query("DELETE FROM category WHERE id = $delcat")) {
+				echo "Delete failed: (" . $database->errno . ") " . $database->error;
+			}
+		}
 	}
 }
 
+# Populate a category drop-down from the database
+function pop_cat_select($database) {
+	if( $result = $database->query("SELECT id, name FROM category LIMIT 100") ) {
+		echo("<select name=\"category\">\n");
+		while ($row = $result->fetch_assoc()) {
+			echo("<option value=\"" . $row['id'] . "\">" . $row['name'] . "</option>\n");
+		}
+		echo("</select>\n");
+	}
+	else {
+		echo "Query returned false: (" . $database->errno . ") " . $database->error;
+	}
+}
 
-# Populate a table or UL from the database
-function populate($database) {
-	if( $result = $database->query("SELECT id, item, date, latitude, longitude FROM list LIMIT 100") ) {
+# Render category headers and populate them
+function pop_list($database) {
+	if( $result = $database->query("SELECT id, name FROM category LIMIT 100") ) {
+		while ($row = $result->fetch_assoc()) {
+			# If there are any matching list items, render it.
+			if( $other_result = $database->query("SELECT catid FROM list WHERE catid='" . $row['id'] . "' LIMIT 100") ) {
+				if ($other_result->num_rows > 0) {
+					echo("<div class=\"category\">" . $row['name'] . "\n");
+					echo("<form class=\"delcat\" action=\"" . htmlspecialchars($_SERVER["PHP_SELF"]) . "\"");
+					echo("method=\"post\"><input type=\"hidden\" name=\"delcat\" value=\"" . $row['id'] . "\">");
+					echo("<input type=\"image\" alt=\"delete\" src=\"img/cancel.svg\" width=20></form>\n");
+					echo("</div>\n");
+					pop_cat($database, $row['id']);
+				}
+			}
+			else {
+				echo "Query returned false: (" . $database->errno . ") " . $database->error;
+			}
+		}
+	}
+	else {
+		echo "Query returned false: (" . $database->errno . ") " . $database->error;
+	}
+}
+
+# Populate a category table from the database
+function pop_cat($database, $category) {
+	if( $result = $database->query("SELECT id, item, date, latitude, longitude FROM list WHERE catid='$category' LIMIT 100") ) {
 
 		echo("<table>");
 		while ($row = $result->fetch_assoc()) {
@@ -82,7 +162,7 @@ function populate($database) {
 			echo("method=\"post\"><input type=\"hidden\" name=\"delete\" value=\"" . $row['id'] . "\">");
 			echo("<input type=\"image\" alt=\"delete\" src=\"img/cancel.svg\" width=20></form></td></tr>\n");
 		}
-		echo("</table>");
+		echo("</table>\n");
 	}
 	else {
 		echo "Query returned false: (" . $database->errno . ") " . $database->error;
