@@ -1,0 +1,49 @@
+body {
+	background-color: #2D2D2D;
+}
+
+div.wrapper {
+	display:inline-block;
+}
+
+div.attrib {
+	text-align: center;
+}
+
+@font-face {
+	font-family: myHoopsicle;
+	src: url(font/Airstream_ITC_TT.ttf);
+}
+
+h1 {
+	color: #C26356;
+	font-size: 50px;
+	font-family: myHoopsicle;
+	font-weight: normal;
+	text-align: center;
+}
+
+p, form, ul, table {
+	color: white;
+	font-family: sans-serif;
+}
+
+a {
+	color: #999999;
+	font-size: 0.75em;
+}
+
+td.date {
+	color: #999999;
+	font-size: 0.75em;
+}
+
+form.input {
+	text-align: center;
+}
+
+table {
+	border: 1px solid white;
+}
+
+tr:hover {background-color: #3D3D3D;}
