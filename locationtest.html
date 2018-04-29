@@ -1,0 +1,38 @@
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<link async="async" href="list.css" media="all" rel="stylesheet" type="text/css" />
+		<title>Test</title>
+	</head>
+	<body>
+		<h1>Testing 123</h1>
+		<form id="main_input" action="" method="post">
+			<button onclick="getLocation()" type="button">Submit</button>
+			<br>
+			<input id="mylat" type="text" name="latitude">
+			<input id="mylong" type="text" name="longitude">
+		</form>
+		<script>
+			var mylat = document.getElementById("mylat");
+			var mylong = document.getElementById("mylong");
+
+			function getLocation() {
+			    if (navigator.geolocation) {
+				navigator.geolocation.getCurrentPosition(showPosition);
+			    } else { 
+				mylat.value = "39.0458";
+				mylong.value = "76.6413";
+			    }
+			}
+
+			function showPosition(position) {
+			    mylat.value = position.coords.latitude;
+			    mylong.value = position.coords.longitude;
+
+			    var the_form = document.getElementById("main_input");
+			    the_form.submit();
+			}
+
+		</script>
+	</body>
+</html>

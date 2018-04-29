@@ -113,11 +113,20 @@ function process_form($database) {
 # Populate a category drop-down from the database
 function pop_cat_select($database) {
 	if( $result = $database->query("SELECT id, name FROM category LIMIT 100") ) {
-		echo("<select name=\"category\">\n");
-		while ($row = $result->fetch_assoc()) {
-			echo("<option value=\"" . $row['id'] . "\">" . $row['name'] . "</option>\n");
+		if ($result->num_rows > 0) {
+			echo ("<form class=\"input\" id=\"main_input\" action=\"" . htmlspecialchars($_SERVER["PHP_SELF"]) . "\" method=\"post\">\n");
+			echo ("New item: <input type=\"text\" size=40 name=\"item\">\n");
+			echo ("Category:"); 
+			echo("<select name=\"category\">\n");
+			while ($row = $result->fetch_assoc()) {
+				echo("<option value=\"" . $row['id'] . "\">" . $row['name'] . "</option>\n");
+			}
+			echo("</select>\n");
+			echo("<input id=\"mylat\" type=\"hidden\" name=\"latitude\">\n");
+			echo("<input id=\"mylong\" type=\"hidden\" name=\"longitude\">\n");
+			echo("<button onclick=\"getLocation()\" type=\"button\">Submit</button>\n");
+			echo("</form>\n");
 		}
-		echo("</select>\n");
 	}
 	else {
 		echo "Query returned false: (" . $database->errno . ") " . $database->error;
@@ -134,7 +143,7 @@ function pop_list($database) {
 					echo("<div class=\"category\">" . $row['name'] . "\n");
 					echo("<form class=\"delcat\" action=\"" . htmlspecialchars($_SERVER["PHP_SELF"]) . "\"");
 					echo("method=\"post\"><input type=\"hidden\" name=\"delcat\" value=\"" . $row['id'] . "\">");
-					echo("<input type=\"image\" alt=\"delete\" src=\"img/cancel.svg\" width=20></form>\n");
+					echo("<input type=\"image\" alt=\"delete\" src=\"img/cancel.svg\" onclick=\"return confirm('Are you sure?')\" width=20></form>\n");
 					echo("</div>\n");
 					pop_cat($database, $row['id']);
 				}

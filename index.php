@@ -19,16 +19,10 @@ process_form($db);
 		<link async="async" href="list.css" media="all" rel="stylesheet" type="text/css" />
 		<title>List</title>
 	</head>
-	<body onload="getLocation()">
+	<body onload="localize()">
 		<div class="wrapper">
 			<h1>A persistent list</h1>
-			<form class="input" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]);?>" method="post">
-				New item: <input type="text" size=40 name="item">
-				Category: <?php pop_cat_select($db); ?>
-				<input id="mylat" type="hidden" name="latitude">
-				<input id="mylong" type="hidden" name="longitude">
-				<input type="submit">
-			</form>
+			<?php pop_cat_select($db); ?>
 			<form class="input" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]);?>" method="post">
 				New category: <input type="text" size=20 name="new_cat">
 				<input type="submit">
@@ -36,7 +30,7 @@ process_form($db);
 			<script>
 				var mylat = document.getElementById("mylat");
 				var mylong = document.getElementById("mylong");
-				
+
 				function getLocation() {
 				    if (navigator.geolocation) {
 					navigator.geolocation.getCurrentPosition(showPosition);
@@ -50,7 +44,9 @@ process_form($db);
 				    mylat.value = position.coords.latitude;
 				    mylong.value = position.coords.longitude;
 
-				    localize();
+				    // HAAAAAAACK!
+				    var the_form = document.getElementById("main_input");
+				    the_form.submit();
 				}
 
 				function localize() {
