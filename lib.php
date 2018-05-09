@@ -63,7 +63,19 @@ function process_form($database) {
 				$category = 1;
 			}
 
-			if (!$database->query("INSERT INTO list (item, date, catid, latitude, longitude) VALUES ('$item', '" . time() . "','$category','$mylat','$mylong')")) {
+			if (isset($_POST["parent"])) {
+				if ($_POST["parent"]) {
+					$parent = (int)$_POST["parent"];
+				}
+				else {
+					$parent = 0;
+				}
+			}
+			else {
+				$parent = 0;
+			}
+
+			if (!$database->query("INSERT INTO list (item, date, catid, latitude, longitude, parent) VALUES ('$item', '" . time() . "','$category','$mylat','$mylong', '$parent')")) {
 				echo "Insert failed: (" . $database->errno . ") " . $database->error;
 			}
 		}
@@ -87,7 +99,27 @@ function process_form($database) {
 			# Validate delete
 			$delete = (int)$_POST["delete"];
 			
-			if (!$database->query("DELETE FROM list WHERE id = $delete")) {
+			# Delete all children
+			if( $result = $database->query("SELECT id, parent FROM list LIMIT 100") ) {
+				$idmap = array();
+				$delmap = array();
+				while ($row = $result->fetch_assoc()) {
+					$idmap[$row['id']] = $row['parent'];
+				}
+
+				$delmap = $delmap + find_children($idmap, $delete, 0);
+			}
+			else {
+				echo "Query returned false: (" . $database->errno . ") " . $database->error;
+			}
+
+			$dellist = "";
+			foreach ($delmap as $delid=>$rubbish) {
+				$dellist .= "'$delid', ";
+			}
+			$dellist .= "'$delete'";
+
+			if (!$database->query("DELETE FROM list WHERE id IN ($dellist)")) {
 				echo "Delete failed: (" . $database->errno . ") " . $database->error;
 			}
 		}
@@ -110,27 +142,25 @@ function process_form($database) {
 	}
 }
 
-# Populate a category drop-down from the database
-function pop_cat_select($database) {
-	if( $result = $database->query("SELECT id, name FROM category LIMIT 100") ) {
-		if ($result->num_rows > 0) {
-			echo ("<form class=\"input\" id=\"main_input\" action=\"" . htmlspecialchars($_SERVER["PHP_SELF"]) . "\" method=\"post\">\n");
-			echo ("New item: <input type=\"text\" size=40 name=\"item\">\n");
-			echo ("Category:"); 
-			echo("<select name=\"category\">\n");
-			while ($row = $result->fetch_assoc()) {
-				echo("<option value=\"" . $row['id'] . "\">" . $row['name'] . "</option>\n");
-			}
-			echo("</select>\n");
-			echo("<input id=\"mylat\" type=\"hidden\" name=\"latitude\">\n");
-			echo("<input id=\"mylong\" type=\"hidden\" name=\"longitude\">\n");
-			echo("<button onclick=\"getLocation()\" type=\"button\">Submit</button>\n");
-			echo("</form>\n");
-		}
-	}
-	else {
-		echo "Query returned false: (" . $database->errno . ") " . $database->error;
-	}
+function new_category() {
+	echo("<button class=\"accordion\" onclick=\"openclose('catmaster')\"><div class=\"tooltip\">\n");
+	echo("<image src=\"img/add.svg\" width=40><span class=\"tooltiptext\">New Category</span></div></button>\n");
+	echo("<form class=\"input\" id=\"catmaster\" action=\"" . htmlspecialchars($_SERVER["PHP_SELF"]) . "\" method=\"post\">");
+	echo("<input type=\"text\" size=20 name=\"new_cat\">");
+	echo("<input type=\"submit\">");
+	echo("</form>\n");
+}
+
+# Render a (hidden) form for entering a new item
+function new_item_form($mycategory, $myparent, $myid) {
+	echo ("<form class=\"input\" id=\"$myid\" action=\"" . htmlspecialchars($_SERVER["PHP_SELF"]) . "\" method=\"post\">");
+	echo ("<input type=\"text\" size=40 name=\"item\">\n");
+	echo ("<input type=\"hidden\" name=\"category\" value=\"$mycategory\">\n");
+	echo ("<input type=\"hidden\" name=\"parent\" value=\"$myparent\">\n");
+	echo ("<input class=\"mylat\" type=\"hidden\" name=\"latitude\">\n");
+	echo ("<input class=\"mylong\" type=\"hidden\" name=\"longitude\">\n");
+	echo ("<button onclick=\"doForm('$myid')\" type=\"button\">Submit</button>\n");
+	echo ("</form>\n");
 }
 
 # Render category headers and populate them
@@ -140,10 +170,14 @@ function pop_list($database) {
 			# If there are any matching list items, render it.
 			if( $other_result = $database->query("SELECT catid FROM list WHERE catid='" . $row['id'] . "' LIMIT 100") ) {
 				if ($other_result->num_rows > 0) {
-					echo("<div class=\"category\">" . $row['name'] . "\n");
-					echo("<form class=\"delcat\" action=\"" . htmlspecialchars($_SERVER["PHP_SELF"]) . "\"");
-					echo("method=\"post\"><input type=\"hidden\" name=\"delcat\" value=\"" . $row['id'] . "\">");
-					echo("<input type=\"image\" alt=\"delete\" src=\"img/cancel.svg\" onclick=\"return confirm('Are you sure?')\" width=20></form>\n");
+					echo("<div class=\"category\">" . $row['name'] . "</div>\n");
+					echo("<div class=\"catbuttons\"><form class=\"delcat\" action=\"" . htmlspecialchars($_SERVER["PHP_SELF"]) . "\"");
+					echo("method=\"post\"><input type=\"hidden\" name=\"delcat\" value=\"" . $row['id'] . "\"><div class=\"tooltip\">\n");
+					echo("<input type=\"image\" alt=\"delete\" src=\"img/cancel.svg\" onclick=\"return confirm('Are you sure?')\" width=20>\n");
+					echo("<span class=\"tooltiptext\">Delete category</span></div></form>\n");
+					echo("<div class=\"tooltip\"><button class=\"accordion\" onclick=\"openclose('cat" . $row['id'] . "')\">\n");
+					echo("<image src=\"img/add.svg\" width=20></button><span class=\"tooltiptext\">New Item</span></div>\n");
+					new_item_form($row['id'], 0, "cat" . $row['id']);
 					echo("</div>\n");
 					pop_cat($database, $row['id']);
 				}
@@ -158,18 +192,62 @@ function pop_list($database) {
 	}
 }
 
+# For an assoc array mapping ID to Parent ID and a given ID, find children, recursively
+function find_children($map, $parent_id, $depth) {
+	$result = array();
+	foreach($map as $row_id => $row_parent_id)
+	{
+		if ( $row_parent_id == $parent_id )
+		{
+			$result[ $row_id ] = $depth;
+			# Not using array_merge here because it destroys numeric associative arrays
+			$result = $result + find_children( $map, $row_id, $depth + 1 );
+		}
+	}
+	return $result;
+}
+
 # Populate a category table from the database
 function pop_cat($database, $category) {
-	if( $result = $database->query("SELECT id, item, date, latitude, longitude FROM list WHERE catid='$category' LIMIT 100") ) {
+	if( $result = $database->query("SELECT id, parent FROM list WHERE catid='$category' LIMIT 100") ) {
+		$idmap = array();
+		$depthmap = array();
+		while ($row = $result->fetch_assoc()) {
+			$idmap[$row['id']] = $row['parent'];
+		}
+
+		$depthmap = $depthmap + find_children($idmap, 0, 0);
+	}
+	else {
+		echo "Query returned false: (" . $database->errno . ") " . $database->error;
+	}
+
+	if( $result = $database->query("SELECT id, item, date, latitude, longitude, parent FROM list WHERE catid='$category' LIMIT 100") ) {
 
 		echo("<table>");
-		while ($row = $result->fetch_assoc()) {
-			echo("<tr><td>" . $row['item'] . "</td><td class=\"date\">" . $row['date'] . "</td>");
-			echo("<td><a target=\"_blank\" href=\"http://maps.google.com/maps?z=12&t=m&q=loc:" . $row['latitude'] . "+" . $row['longitude'] . "\">");
-			echo("<image src=\"img/map.svg\" width=20></a></td>");
-			echo("<td><form action=\"" . htmlspecialchars($_SERVER["PHP_SELF"]) . "\"");
+		while ($myrow = $result->fetch_assoc()) {
+			$master[] = $myrow;
+		}
+
+		foreach ($depthmap as $row_id=>$depth) {
+			foreach ($master as $myrow) {
+				if ($myrow['id'] == $row_id) {
+					$row = $myrow;
+					break;
+				}
+			}
+
+			echo("<tr><td class=\"depth$depth\">" . $row['item'] . "</td><td class=\"date\">" . $row['date'] . "</td>");
+			echo("<td><div class=\"tooltip\"><button class=\"accordion\" onclick=\"openclose('item" . $row['id'] . "')\">\n");
+			echo("<image src=\"img/chat.svg\" width=20></button><span class=\"tooltiptext\">Reply</span></div></td>\n");
+			echo("<td><a class=\"tooltip\" target=\"_blank\" href=\"http://maps.google.com/maps?z=12&t=m&q=loc:" . $row['latitude'] . "+" . $row['longitude'] . "\">");
+			echo("<image src=\"img/map.svg\" width=20><span class=\"tooltiptext\">Location submitted</span></a></td>");
+			echo("<td><form class=\"tooltip\" action=\"" . htmlspecialchars($_SERVER["PHP_SELF"]) . "\"");
 			echo("method=\"post\"><input type=\"hidden\" name=\"delete\" value=\"" . $row['id'] . "\">");
-			echo("<input type=\"image\" alt=\"delete\" src=\"img/cancel.svg\" width=20></form></td></tr>\n");
+			echo("<input type=\"image\" alt=\"delete\" src=\"img/cancel.svg\" width=20><span class=\"tooltiptext\">Delete item</span></form></td>\n");
+			echo("</tr><tr><td class=\"hidden\">\n");
+			new_item_form($category, $row['id'], "item" . $row['id']);
+			echo("</td></tr>\n");
 		}
 		echo("</table>\n");
 	}

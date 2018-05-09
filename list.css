@@ -24,10 +24,17 @@ h1, div.category {
 h1 {
 	font-size: 50px;
 	text-align: center;
+	display: inline;
 }
 
 div.category {
 	font-size: 25px;
+	text-align: left;
+	margin-bottom: 0;
+	display: inline;
+}
+
+div.catbuttons {
 	text-align: left;
 	margin-bottom: 0;
 	display: inline;
@@ -38,9 +45,27 @@ form.delcat {
 	display: inline;
 }
 
-p, form, ul, table {
+button.accordion {
+	background-color: #2D2D2D;
+	border: none;
+	padding: 0px 0px;
+}
+
+button.accordion:hover {
+	background-color: #3D3D3D;
+}
+
+p, form, table, div {
 	color: white;
 	font-family: sans-serif;
+}
+
+.attrib {
+	color: black;
+}
+
+.hidden {
+	padding: 0;
 }
 
 a {
@@ -54,7 +79,8 @@ td.date {
 }
 
 form.input {
-	text-align: center;
+	display: none;
+	overflow: hidden;
 }
 
 table {
@@ -62,3 +88,70 @@ table {
 }
 
 tr:hover {background-color: #3D3D3D;}
+
+.tooltip {
+	position: relative;
+	display: inline-block;
+}
+
+.tooltiptext {
+	font-size: 16px;
+	visibility: hidden;
+	width: 120px;
+	background-color: #555;
+	color: #fff;
+	text-align: center;
+	border-radius: 6px;
+	padding: 5px 0;
+	position: absolute;
+	z-index: 1;
+	bottom: 125%;
+	left: 50%;
+	margin-left: -60px;
+	opacity: 0;
+	transition: opacity 1s;
+}
+
+.tooltiptext::after {
+	content: "";
+	position: absolute;
+	top: 100%;
+	left: 50%;
+	margin-left: -5px;
+	border-width: 5px;
+	border-style: solid;
+	border-color: #555 transparent transparent transparent;
+}
+
+.tooltip:hover .tooltiptext {
+	visibility: visible;
+	opacity: 1;
+}
+
+.depth1 {
+	text-indent: 2em;
+}
+.depth2 {
+	text-indent: 4em;
+}
+.depth3 {
+	text-indent: 6em;
+}
+.depth4 {
+	text-indent: 8em;
+}
+.depth5 {
+	text-indent: 10em;
+}
+.depth6 {
+	text-indent: 12em;
+}
+.depth7 {
+	text-indent: 14em;
+}
+.depth8 {
+	text-indent: 16em;
+}
+.depth9 {
+	text-indent: 18em;
+}
